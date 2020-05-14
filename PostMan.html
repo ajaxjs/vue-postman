@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PostMan</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/vue/2.6.11/vue.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/axios/0.19.2/axios.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/element-ui/2.13.1/index.js"></script>
+    <link href="https://cdn.bootcdn.net/ajax/libs/element-ui/2.13.1/theme-chalk/index.css" rel="stylesheet">
+
+    <script src="https://cdn.bootcdn.net/ajax/libs/highlight.js/10.0.3/highlight.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/highlight.js/10.0.3/languages/javascript.min.js"></script>
+    <link href="https://cdn.bootcdn.net/ajax/libs/highlight.js/10.0.3/styles/default.min.css" rel="stylesheet">
+    <!-- <link href="https://cdn.bootcdn.net/ajax/libs/highlight.js/10.0.3/styles/atom-one-dark.min.css" rel="stylesheet"> -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/highlight.js/10.0.3/styles/atelier-savanna-light.min.css" rel="stylesheet">
+    <script src="https://cdn.bootcdn.net/ajax/libs/blueimp-md5/2.15.0/js/md5.min.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <el-container>
+            <el-header height="auto">
+                <el-input placeholder="请输入网址" v-model="opts.url">
+                    <el-select v-model="opts.method" slot="prepend" placeholder="请选择" style="width:100px;">
+                        <el-option v-for="(item, index,ikey) in methods" :key="index" :value="item"></el-option>
+                    </el-select>
+                    <el-button @click="doSend" slot="append" icon="el-icon-s-promotion">Send</el-button>
+                </el-input>
+            </el-header>
+            <el-header height="auto">
+                <el-tabs v-model="ajaxtab">
+                    <!-- Params -->
+                    <el-tab-pane label="Params" name="Params">
+                        <prms-item v-for="(item, ti) in prms" :key="ti" :prms="item" @delete="delItem('prms', ti)"></prms-item>
+                    </el-tab-pane>
+                    <!-- Headers -->
+                    <el-tab-pane label="Headers" name="Headers">
+                        <prms-item v-for="(item, ti) in heads" :key="ti" :prms="item" @delete="delItem('heads', ti)"></prms-item>
+                    </el-tab-pane>
+                    <!-- Histore -->
+                    <el-tab-pane label="Histore" name="Histore">
+                        <el-row :gutter="10" v-for="(item, ti) in histore" :key="ti" align="middle">
+                            <el-col :span="2">{{item.opts.method}}</el-col>
+                            <el-col :span="18" style="cursor: pointer;">
+                                <div @click="setLogs(ti)">
+                                    <div>{{item.opts.url}}</div>
+                                    <small style="color:#909399">{{formatPrms(item.prms)}}</small>
+                                </div>
+                            </el-col>
+                            <el-col :span="4">
+                                <el-button :tabindex="-1" type="danger" icon="el-icon-close" size="small" @click="delLogs(ti)"></el-button>
+                            </el-col>
+                          </el-row>
+                    </el-tab-pane>
+                </el-tabs>
+            </el-header>
+            <el-main>
+                <pre v-highlight><code class="lang-javascript" v-html="result"></code></pre>
+            </el-main>
+        </el-container>
+    </div>
+</body>
+
+</html>
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                ajaxtab: 'Params',
+                opts: {
+                    url: 'http://localhost:8098/shop/goods/info?id=1225',
+                    method: 'GET',
+                },
+                prms: [],
+                heads:[],
+                histore:[],
+                methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+                result: '{"body":123}'
+            }
+        },
+        computed: {
+            lastPrm(){
+                let lastkey = this.prms[this.prms.length-1]
+                return lastkey ? lastkey.key : ''
+            },
+            lastHds(){
+                let lastkey = this.heads[this.heads.length-1]
+                return lastkey ? lastkey.key : ''
+            },
+            headers(){
+                return this.formatPrms(this.heads);
+            },
+            params(){
+                return this.formatPrms(this.prms);
+            }
+        },
+        watch: {
+            lastPrm(vo){
+                console.log(vo)
+                if(vo){
+                    this.addItem('prms')
+                }
+            },
+            lastHds(vo){
+                console.log(vo)
+                if(vo){
+                    this.addItem('heads')
+                }
+            }
+        },
+        mounted() {
+            this.addItem('prms')
+            this.addItem('heads')
+            this.histore = this.getLogs()
+        },
+        methods: {
+            prmTemp(){
+                return { check: true, key: '', value: '' }
+            },
+            addItem(tp) {
+                this[tp].push(this.prmTemp());
+            },
+            delItem(tp,i){
+                this.$delete(this[tp],i)
+                //this[tp] = prms
+            },
+            formatPrms(prms){
+                let data = {}
+                prms.forEach((item,i)=>{
+                    if(item.check && item.key){
+                        data[item.key] = item.value
+                    }
+                })
+                return data
+            },
+            getLogs() {
+                let logs = localStorage.getItem('post-man-logs');
+                if(logs){
+                    logs = JSON.parse(logs)
+                }else{
+                    logs = {}
+                }
+                return logs
+            },
+            setLogs(ti) {
+                let log = this.histore[ti]
+                console.log('setLog',log)
+                this.opts = log.opts
+                this.prms = log.prms
+                this.heads = log.heads
+            },
+            delLogs(id) {
+                this.$delete(this.histore, id)
+                localStorage.setItem('post-man-logs',JSON.stringify(this.histore))
+            },
+            doSend() {
+                let logs = this.getLogs()
+                //History
+                let sends = {opts: this.opts, prms: this.prms, heads: this.heads}
+                logs[md5(JSON.stringify(sends))] = sends;
+                localStorage.setItem('post-man-logs',JSON.stringify(logs))
+                //POST
+                let data = this.params;
+                let opts = Object.assign({
+                    headers: this.headers
+                }, this.opts)
+                if(opts.method == 'GET'){
+                    opts.params = data
+                }else{
+                    opts.data = data
+                }
+                axios(opts).then(res => {
+                    this.result = res.data
+                }).catch(err => {
+                    this.result = err.response ? err.response.data : err
+                })
+            }
+        }
+    })
+    
+    Vue.component('prms-item', {
+        props:{
+            prms: Object
+        },
+        methods: {
+            delItem(){
+                this.$emit('delete')
+            }
+        },
+        template: `
+            <el-row class="prm-item" :gutter="10" align="middle" type="flex">
+                <el-col :span="2" class="check">
+                    <el-checkbox v-model="prms.check" :tabindex="-1"></el-checkbox>
+                </el-col>
+                <el-col :span="9" :xs="8">
+                    <el-input v-model="prms.key" placeholder="Key"></el-input>
+                </el-col>
+                <el-col :span="9" :xs="8">
+                    <el-input v-model="prms.value" placeholder="Value"></el-input>
+                </el-col>
+                <el-col :span="4" :xs="6">
+                    <el-button :tabindex="-1" type="danger" icon="el-icon-close" size="small" @click="delItem"></el-button>
+                </el-col>
+            </el-row>
+        `
+    })
+    Vue.directive('highlight', function (el) {
+        let blocks = el.querySelectorAll('pre code');
+        blocks.forEach((block) => {
+            hljs.highlightBlock(block)
+        })
+    })
+</script>
+<style>
+    #app,
+    html,
+    body,
+    .el-container {
+        height: 100%;
+    }
+    .prm-item{margin-bottom:5px;}
+    .prm-item .check label {
+        display: block;
+        text-align: center;
+    }
+</style>
