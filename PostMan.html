@@ -31,6 +31,9 @@
                 </el-input>
             </el-header>
             <el-header height="auto">
+                <div class="btn-toggle">
+                    <el-button type="info" size="mini" :icon="toggle?'el-icon-caret-bottom':'el-icon-caret-top'" @click="toggle = !toggle">{{toggle?'Show':'Hide'}}</el-button>
+                </div>
                 <el-tabs v-model="ajaxtab">
                     <!-- Params -->
                     <el-tab-pane label="Params" name="Params">
@@ -78,6 +81,7 @@
         el: '#app',
         data() {
             return {
+                toggle: true,
                 ajaxtab: 'Params',
                 opts: {
                     url: '',
@@ -241,4 +245,6 @@
         display: block;
         text-align: center;
     }
+    .btn-toggle{position:relative;z-index: 9}
+    .btn-toggle button{position:absolute;right:0;top:0;margin:5px;}
 </style>
